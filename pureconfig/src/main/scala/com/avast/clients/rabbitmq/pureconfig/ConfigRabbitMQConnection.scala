@@ -24,7 +24,6 @@ import com.avast.clients.rabbitmq.{
 }
 import com.avast.metrics.scalaapi.Monitor
 
-import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 trait ConfigRabbitMQConnection[F[_]] {
@@ -90,9 +89,9 @@ trait ConfigRabbitMQConnection[F[_]] {
     */
   def withChannel[A](f: ServerChannel => F[A]): F[A]
 
-  def connectionListener: ConnectionListener
-  def channelListener: ChannelListener
-  def consumerListener: ConsumerListener
+  def connectionListener: ConnectionListener[F]
+  def channelListener: ChannelListener[F]
+  def consumerListener: ConsumerListener[F]
 }
 
 class DefaultConfigRabbitMQConnection[F[_]](config: ConfigCursor, wrapped: RabbitMQConnection[F])(
@@ -112,28 +111,28 @@ class DefaultConfigRabbitMQConnection[F[_]](config: ConfigCursor, wrapped: Rabbi
 
   override def withChannel[A](f: ServerChannel => F[A]): F[A] = wrapped.withChannel(f)
 
-  override val connectionListener: ConnectionListener = wrapped.connectionListener
+  override val connectionListener: ConnectionListener[F] = wrapped.connectionListener
 
-  override val channelListener: ChannelListener = wrapped.channelListener
+  override val channelListener: ChannelListener[F] = wrapped.channelListener
 
-  override val consumerListener: ConsumerListener = wrapped.consumerListener
+  override val consumerListener: ConsumerListener[F] = wrapped.consumerListener
 
   override def newConsumer[A: DeliveryConverter](configName: String, monitor: Monitor)(
       readAction: DeliveryReadAction[F, A]): Resource[F, RabbitMQConsumer[F]] = {
-    Resource.liftF(loadConfig[ConsumerConfig](ConsumersRootName, configName)) >>= (wrapped.newConsumer(_, monitor)(readAction))
+    Resource.eval(loadConfig[ConsumerConfig](ConsumersRootName, configName)) >>= (wrapped.newConsumer(_, monitor)(readAction))
   }
 
   override def newProducer[A: ProductConverter](configName: String, monitor: Monitor): Resource[F, RabbitMQProducer[F, A]] = {
-    Resource.liftF(loadConfig[ProducerConfig](ProducersRootName, configName)) >>= (wrapped.newProducer(_, monitor))
+    Resource.eval(loadConfig[ProducerConfig](ProducersRootName, configName)) >>= (wrapped.newProducer(_, monitor))
   }
 
   override def newPullConsumer[A: DeliveryConverter](configName: String, monitor: Monitor): Resource[F, RabbitMQPullConsumer[F, A]] = {
-    Resource.liftF(loadConfig[PullConsumerConfig](ConsumersRootName, configName)) >>= (wrapped.newPullConsumer(_, monitor))
+    Resource.eval(loadConfig[PullConsumerConfig](ConsumersRootName, configName)) >>= (wrapped.newPullConsumer(_, monitor))
   }
 
   override def newStreamingConsumer[A: DeliveryConverter](configName: String,
                                                           monitor: Monitor): Resource[F, RabbitMQStreamingConsumer[F, A]] = {
-    Resource.liftF(loadConfig[StreamingConsumerConfig](ConsumersRootName, configName)) >>= (wrapped.newStreamingConsumer(_, monitor))
+    Resource.eval(loadConfig[StreamingConsumerConfig](ConsumersRootName, configName)) >>= (wrapped.newStreamingConsumer(_, monitor))
   }
 
   override def declareExchange(configName: String): F[Unit] = {

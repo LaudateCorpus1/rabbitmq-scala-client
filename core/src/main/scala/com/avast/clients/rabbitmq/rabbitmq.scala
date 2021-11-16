@@ -10,7 +10,7 @@ import com.rabbitmq.client.{RecoverableChannel, RecoverableConnection}
 import fs2.RaiseThrowable
 
 import java.util.concurrent.Executors
-import scala.language.{higherKinds, implicitConversions}
+import scala.language.implicitConversions
 
 package object rabbitmq {
   private[rabbitmq] type ServerConnection = RecoverableConnection
